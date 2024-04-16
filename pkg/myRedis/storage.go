@@ -1,6 +1,8 @@
-package main
+package pkg
 
-import "time"
+import (
+	"time"
+)
 
 type Storage struct {
 	data map[string]string
@@ -21,7 +23,7 @@ func (s Storage) KillValue(key string, duration int) {
 	delete(s.data, key)
 }
 
-func NewStorage() Storage {
+func newStorage() Storage {
 	return Storage{
 		data: make(map[string]string),
 	}

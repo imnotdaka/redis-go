@@ -1,15 +1,10 @@
-package main
+package pkg
 
 import (
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
-)
-
-const (
-	LF    = "\r\n"
-	array = "*"
 )
 
 type Server struct {
@@ -19,7 +14,8 @@ type Server struct {
 	cache    Storage
 }
 
-func NewServer(protocol string, ip string, cache Storage) Server {
+func NewServer(protocol string, ip string) Server {
+	cache := newStorage()
 	return Server{protocol: protocol, ip: ip, cache: cache}
 }
 
@@ -56,14 +52,14 @@ func (s Server) HandleClient(conn net.Conn) error {
 			return err
 		}
 		commands := protocolParser(buf)
-		switch commands[0] {
-		case "echo":
+		switch strings.ToUpper(commands[0]) {
+		case "ECHO":
 			_, err = conn.Write([]byte(createBulkResponse(commands[1])))
 			if err != nil {
 				return err
 			}
-		case "set":
-			duration := 100
+		case "SET":
+			duration := 10000
 			if len(commands) > 3 {
 				duration, err = strconv.Atoi(commands[4])
 				if err != nil {
@@ -76,7 +72,7 @@ func (s Server) HandleClient(conn net.Conn) error {
 			if err != nil {
 				return err
 			}
-		case "get":
+		case "GET":
 			s := s.cache.GetValue(commands[1])
 			if s == "" {
 				_, err = conn.Write([]byte(createNullResponse()))
@@ -89,7 +85,7 @@ func (s Server) HandleClient(conn net.Conn) error {
 			if err != nil {
 				return err
 			}
-		case "ping":
+		case "PING":
 			_, err = conn.Write([]byte("+PONG\r\n"))
 			if err != nil {
 				return err
@@ -97,39 +93,4 @@ func (s Server) HandleClient(conn net.Conn) error {
 		}
 
 	}
-}
-
-func protocolParser(input []byte) []string {
-	inputStr := string(input)
-	var commands []string
-	if strings.HasPrefix(inputStr, array) {
-		commands = ParseArray(inputStr)
-	}
-
-	return commands
-}
-func ParseArray(inputStr string) []string {
-	var res []string
-	end := strings.Index(inputStr, "\r\n")
-	s := inputStr[end+2:]
-	for i := 0; i < len(s); i++ {
-		if string(s[i]) == "$" {
-			j := strings.Index(s[i:], "\r\n")
-			n, _ := strconv.Atoi(s[i+1 : j+i])
-			word := s[j+i+2 : j+i+2+n]
-			res = append(res, word)
-		}
-		// $4\r\necho\r\n$3\r\nhey\r\n
-	}
-	return res
-}
-
-func createBulkResponse(s string) string {
-
-	return "$" + strconv.Itoa(len(s)) + LF + s + LF
-}
-
-func createNullResponse() string {
-
-	return "$-1" + LF
 }
